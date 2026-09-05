@@ -1,0 +1,39 @@
+[project]
+name = "a-share-fundamental-alpha"
+version = "0.1.0"
+description = "Quant research case study: fundamental event alpha in China A-shares (point-in-time, trading frictions, ML extension)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Weike (weike160)" }]
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+ml = [
+    "lightgbm",
+    "xgboost",
+    "torch",
+]
+dev = [
+    "pytest",
+    "ruff",
+    "shap",
+    "matplotlib",
+    "seaborn",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["data*", "signals*", "factor*", "portfolio*", "execution*", "backtest*", "ml*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

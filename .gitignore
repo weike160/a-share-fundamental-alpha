@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# Test / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Tooling
+.ruff_cache/
+.mypy_cache/
+
+# Data (local, not committed)
+data/raw/
+data/processed/
+*.parquet
+*.feather
+*.csv
+*.h5
+*.hdf5
+
+# Reports / outputs
+report/research_report.pdf
+report/output/
+*.png
+*.pdf
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Secrets — never commit
+.env
+.env.*
+*.token
+!*.pub
+credential*.json
