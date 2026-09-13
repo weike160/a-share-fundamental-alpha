@@ -33,6 +33,12 @@ data/processed/
 report/research_report.pdf
 report/output/
 *.png
+
+# 例外: 研究报告正文用相对路径引用这 4 张图, 必须进仓库
+!results/figures/signal_distribution.png
+!results/figures/ic_decay.png
+!results/figures/quantile_returns.png
+!results/figures/gross_to_net.png
 *.pdf
 
 # OS / editor

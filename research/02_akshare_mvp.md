@@ -1,6 +1,7 @@
 # v1.0：AKShare 最小研究闭环
 
-状态：开发中
+状态：已完成。样本区间 2019Q1–2024Q2（22 个报告期），91,598 条事件、4,953 只股票。
+结果与结论见 `report/REPORT.md`；主假设在本样本上被否定。
 
 ## 目标
 
@@ -65,17 +66,31 @@ SUE(i,t) = UE(i,t) / std(UE(i,t-k:t-1))
 
 ## 输出文件
 
-完成后应由同一条运行命令生成：
+完成后由同一条运行命令 (`python scripts/run_all.py`) 生成：
 
 ```text
+data/processed/
+├── event_panel.parquet            事件面板 (含三个时点)
+├── event_panel_returns.parquet    附未来收益
+├── event_panel_signal.parquet     附 SUE
+├── analysis_panel.parquet         最终研究面板 (信号+特征+顺延成交)
+└── prices.parquet                 日频行情
+
 results/
-├── data_audit.csv
-├── sample_events.csv
-├── factor_metrics.json
-├── ic_by_period.csv
-├── quantile_returns.csv
-├── robustness.csv
-├── model_comparison.csv
+├── data_audit.csv                 逐报告期覆盖审计
+├── sample_audit.csv / .md         人工抽查样本 (实现为 sample_events 的等价物)
+├── return_audit.csv               未来收益覆盖率
+├── signal_audit.csv               SUE 覆盖率与跨源口径校验
+├── analysis_audit.csv             特征覆盖率与顺延成交统计
+├── factor_metrics.json            RankIC / ICIR / t 值
+├── ic_by_period.csv               逐期 IC
+├── quantile_returns.csv           分层收益
+├── cross_sectional_regression.csv 横截面回归
+├── backtest_cohorts.csv           逐期队列收益与成本
+├── backtest_metrics.json          回测指标与容量情景
+├── robustness.csv                 稳健性情景
+├── model_comparison.csv           Ridge vs LightGBM 样本外
+├── ml_robustness.csv              样本外信号的市值/年份拆分
 └── figures/
     ├── signal_distribution.png
     ├── ic_decay.png
@@ -83,51 +98,52 @@ results/
     └── gross_to_net.png
 ```
 
-`sample_events.csv` 保存人工审计样本，至少包含报告期、实际披露日期、信号可用日期、首次交易日期和收益计算区间。受授权限制的原始数据不提交到仓库。
+`sample_audit.csv` 保存人工审计样本，包含报告期、实际披露日期、信号可用日期、
+首次交易日期和收益计算区间。受授权限制的原始数据不提交到仓库。
 
 ## 实现顺序
 
 ### 1. 数据闭环
 
-- [ ] 固定 AKShare 版本和研究配置
-- [ ] 下载并缓存原始响应
-- [ ] 合并财务、披露日期和行情
-- [ ] 生成交易日历与首次可交易日期
-- [ ] 输出缺失率、覆盖率和匹配失败原因
-- [ ] 人工核对至少 20 条事件
+- [x] 固定 AKShare 版本和研究配置 (`research/config.py`, 缓存 meta 记录版本)
+- [x] 下载并缓存原始响应
+- [x] 合并财务、披露日期和行情
+- [x] 生成交易日历与首次可交易日期
+- [x] 输出缺失率、覆盖率和匹配失败原因
+- [x] 人工核对至少 20 条事件 (抽查 30 条)
 
 ### 2. 因子闭环
 
-- [ ] 实现季节性随机游走 SUE
-- [ ] 实现净利润和营收同比信号
-- [ ] 按事件日去极值、标准化并中性化
-- [ ] 计算 5、10、20、40 日 RankIC 和 ICIR
-- [ ] 输出五分组收益与 IC Decay
-- [ ] 完成行业和市值控制后的横截面回归
+- [x] 实现季节性随机游走 SUE (覆盖 96.0%)
+- [x] 实现净利润和营收同比信号
+- [x] 按事件日去极值、标准化并中性化
+- [x] 计算 1、5、10、20、40、60 日 RankIC 和 ICIR
+- [x] 输出五分组收益与 IC Decay
+- [x] 完成行业和市值控制后的横截面回归
 
 ### 3. 交易闭环
 
-- [ ] 构建高分位 long-only 组合
-- [ ] 处理停牌、涨跌停和顺延成交
-- [ ] 加入佣金、卖出印花税和滑点
-- [ ] 限制订单占 ADV 的比例
-- [ ] 输出 Gross 到 Net 的逐项拆解
+- [x] 构建高分位 long-only 组合
+- [x] 处理停牌、涨跌停和顺延成交 (1.97% 事件需要顺延)
+- [x] 加入佣金、卖出印花税和滑点
+- [x] 限制订单占 ADV 的比例 (10%)
+- [x] 输出 Gross 到 Net 的逐项拆解
 
 ### 4. 稳健性与模型比较
 
-- [ ] 按年份、市值和流动性拆分结果
-- [ ] 比较公告后第 1 个与第 2 个可交易日入场
-- [ ] 运行双倍成本情景
-- [ ] 使用 walk-forward 和 purge gap 比较 Ridge 与 LightGBM
-- [ ] 使用相同样本和成本口径比较模型
+- [x] 按年份、市值和流动性拆分结果
+- [x] 比较公告后第 1 个与第 2 个可交易日入场
+- [x] 运行双倍成本情景
+- [x] 使用 walk-forward 和 purge gap 比较 Ridge 与 LightGBM
+- [x] 使用相同样本和成本口径比较模型
 
 ### 5. 交付
 
-- [ ] 一条命令重新生成表格和图
-- [ ] 自动化测试覆盖信号、时间对齐、IC、分组和成本
-- [ ] README 写入真实样本范围和主要结果
-- [ ] 报告同时记录有效、无效和异常实验
-- [ ] 简历只引用已经生成并能够复现的数字
+- [x] 一条命令重新生成表格和图 (`scripts/run_all.py`)
+- [x] 自动化测试覆盖信号、时间对齐、IC、分组和成本 (201 passed)
+- [x] README 写入真实样本范围和主要结果
+- [x] 报告同时记录有效、无效和异常实验
+- [x] 简历只引用已经生成并能够复现的数字
 
 ## 当日取舍规则
 

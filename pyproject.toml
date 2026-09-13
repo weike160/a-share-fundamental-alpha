@@ -8,24 +8,26 @@ license = { text = "MIT" }
 authors = [{ name = "Weike (weike160)" }]
 
 dependencies = [
-    "numpy",
-    "pandas",
-    "scipy",
-    "scikit-learn",
+    "numpy>=1.26,<3",
+    "pandas>=2.2,<3",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "akshare>=1.18",
 ]
 
 [project.optional-dependencies]
 ml = [
-    "lightgbm",
-    "xgboost",
-    "torch",
+    "lightgbm>=4.0",
+    "xgboost>=2.0",
+    # >=2.7 才包含 sm_120 (Blackwell / RTX 50 系) kernel
+    "torch>=2.7",
 ]
 dev = [
-    "pytest",
-    "ruff",
-    "shap",
-    "matplotlib",
-    "seaborn",
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "shap>=0.46",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
 ]
 
 [build-system]
@@ -33,7 +35,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["data*", "signals*", "factor*", "portfolio*", "execution*", "backtest*", "ml*"]
+include = ["data*", "signals*", "factor*", "portfolio*", "execution*", "backtest*", "ml*", "research*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
