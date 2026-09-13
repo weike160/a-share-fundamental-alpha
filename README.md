@@ -2,6 +2,8 @@
 
 **A-share Fundamental Event Alpha: Point-in-Time Signals, Trading Frictions and Machine Learning**
 
+> 分支说明：`full-project-roadmap` 保存项目的完整目标和长期结构，不代表当前实现进度。当前可执行工作与最新状态以 `main` 为准。
+
 一个试图完整复现一次真实 A 股量化研究流程的项目。它的目标**不是**做一个“看起来收益很高”的策略 Demo，也不是单纯复现一个 PEAD 因子，而是回答：
 
 > 一个量化信号应该**如何提出、如何验证、如何被质疑**，并最终判断它是否具有**可交易价值**。
