@@ -1,0 +1,2 @@
+﻿code,error
+689009,"DataSourceError: stock_zh_a_daily({'symbol': 'sh689009', 'start_date': '20190401', 'end_date': '20241113', 'adjust': 'hfq'}) 重试 4 次后仍失败: JSONDecodeError: No value to decode"

@@ -26,6 +26,8 @@ data/processed/
 *.parquet
 *.feather
 *.csv
+# 例外: 研究报告引用的结果表要进仓库 (逐报告期覆盖、IC、分层、稳健性等)
+!results/*.csv
 *.h5
 *.hdf5
 
