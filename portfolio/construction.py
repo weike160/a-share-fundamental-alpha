@@ -48,23 +48,9 @@ def long_only_portfolio(
     benchmark_weights: pd.Series,
     top_pct: float = 0.10,
 ) -> pd.Series:
-    """从基准成分中选信号最强的头部名字做等权多头.
+    """在正基准权重且信号非缺失的标的中选前 top_pct，等权持有。
 
-    Parameters
-    ----------
-    signal:
-        选股信号, 越大越优。
-    benchmark_weights:
-        基准权重, 同时决定候选域与返回索引。
-    top_pct:
-        头部比例; 入选数 ``max(1, ceil(top_pct * n))`` (上限为候选数)。
-
-    Returns
-    -------
-    Series, 索引与 ``benchmark_weights`` 完全一致: 入选名字等权 ``1/k``,
-    其余为 0。候选池 = 索引在基准内、信号非 ``NaN`` 且基准权重 > 0 的名字;
-    候选为空时返回全 0。
-    """
+    至少选一只，上限为候选数；返回基准索引，未入选权重为零。"""
     benchmark = _as_float(benchmark_weights)
     scores = _as_float(signal).reindex(benchmark.index)
     result = pd.Series(0.0, index=benchmark.index, dtype="float64")
@@ -91,37 +77,11 @@ def apply_constraints(
     prev_weights: pd.Series | None = None,
     liquidity_cap: pd.Series | None = None,
 ) -> pd.Series:
-    """按固定顺序施加单票/行业/市值/换手/流动性约束.
+    """依次施加逐票、行业、单票和换手约束，保留输入索引。
 
-    Parameters
-    ----------
-    weights:
-        目标权重, 负值按 0 处理。
-    max_weight:
-        单票权重上限。
-    industry:
-        标的 -> 行业映射, 配合 ``industry_cap`` 使用。
-    industry_cap:
-        单一行业权重上限。
-    size_cap, liquidity_cap:
-        逐票上限 (如按市值/流动性折算的最大权重), 同时给定时取较小者。
-    turnover_cap, prev_weights:
-        单边换手上限与上期权重; 两者都给定时按 ``w = prev + k(w - prev)``
-        收缩, ``k`` 取满足 ``0.5 * sum|w - prev| <= turnover_cap`` 的最大
-        ``k <= 1``。
-    prev_weights:
-        上期权重, 缺失名字按 0 处理。
-
-    Returns
-    -------
-    Series, 索引与 ``weights`` 一致, 非负且和为 1; 输入和 <= 0 时为全 0。
-
-    Notes
-    -----
-    顺序: (1) 逐票上限裁剪并归一; (2) 行业超限缩放, 超额按比例分给行业外
-    名字 (迭代若干轮); (3) ``max_weight`` 迭代削峰; (4) 换手收缩。
-    当约束互相冲突 (如 ``max_weight * n < 1``) 时以和为 1 优先。
-    """
+    负权重按零处理，size_cap 与 liquidity_cap 取较小者。行业超额按比例
+    分配到行业外，再迭代削峰；换手约束使权重向上期收缩。
+    约束冲突时优先归一化，输入权重和不为正时返回全零。"""
     target = _as_float(weights).fillna(0.0).clip(lower=0.0)
     index = target.index
     if float(target.sum()) <= 0.0:

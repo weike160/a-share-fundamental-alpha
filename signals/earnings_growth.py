@@ -16,28 +16,13 @@ GROWTH_VALUE_COLS: dict[str, str] = {
 
 
 def yoy_growth(financial: pd.Series, lag: int = 4) -> pd.Series:
-    """同比变化率 ``x_t / x_{t-lag} - 1``, 按位置取滞后值.
-
-    与 ``pct_change`` 的差别: 去年同期为 0 时返回 ``NaN`` 而不是 ``inf``。
-
-    Parameters
-    ----------
-    financial:
-        单只标的的时序数值序列。
-    lag:
-        同比滞后阶数, 必须 >= 1。
-
-    Returns
-    -------
-    与输入等长、同索引的序列; 当期值缺失、去年同期值缺失或为 0 时为 ``NaN``。
-    """
+    """按位置计算同比 x / x.shift(lag) - 1；任一侧缺失或基数为零时返回 NaN。"""
     if lag < 1:
         raise ValueError(f"lag 必须 >= 1, 收到 {lag}")
     values = pd.to_numeric(financial, errors="coerce")
     base = values.shift(lag)
-    valid = values.notna() & base.notna() & (base != 0)
-    out = (values / base.where(valid)) - 1.0
-    return out.where(valid).rename(financial.name)
+    base = base.where(base != 0)
+    return (values / base - 1.0).rename(financial.name)
 
 
 def _sorted_work(
@@ -72,19 +57,9 @@ def _original_order(work: pd.DataFrame) -> np.ndarray:
 
 
 def earnings_growth(financials: pd.DataFrame) -> pd.DataFrame:
-    """净利润 / 营收 / EPS 同比.
+    """按股票和报告期计算净利润、营收、EPS 同比，返回原始行序与索引。
 
-    Parameters
-    ----------
-    financials:
-        长表, 至少包含 ``[code, report_date]``; 数值列取
-        ``net_profit`` / ``revenue`` / ``eps``, 缺失的数值列对应输出全为 ``NaN``。
-
-    Returns
-    -------
-    列 ``[net_profit_yoy_calc, revenue_yoy_calc, eps_yoy_calc]``,
-    行序与索引与输入完全一致。
-    """
+    必须有 code、report_date；缺失的数值列对应输出全 NaN。"""
     work = _sorted_work(
         financials, {"code", "report_date"}, tuple(GROWTH_VALUE_COLS)
     )
@@ -103,22 +78,7 @@ def earnings_growth(financials: pd.DataFrame) -> pd.DataFrame:
 
 
 def roe_change(financials: pd.DataFrame) -> pd.Series:
-    """ROE 的同比变化 ``roe_t - roe_{t-4}``.
-
-    Parameters
-    ----------
-    financials:
-        长表, 至少包含 ``[code, report_date, roe]``。
-
-    Returns
-    -------
-    与输入同索引的序列 ``roe_change``, 任一侧缺失时为 ``NaN``。
-
-    Raises
-    ------
-    ValueError
-        缺少 ``code`` / ``report_date`` / ``roe`` 时。
-    """
+    """按股票计算 ROE 与四期前的差值，保留原始行序和索引。"""
     work = _sorted_work(financials, {"code", "report_date", "roe"}, ("roe",))
     changed = work.groupby("code", sort=False)["roe"].transform(
         lambda s: s - s.shift(DEFAULT_LAG)

@@ -1,30 +1,8 @@
-"""事件驱动回测引擎.
+"""按入场月份分组的财报事件回测。
 
-组合构造
---------
-按**入场月份**把事件切成互不重叠的队列 (cohort): 队列 m 包含所有在 m 月
-入场的财报事件。每个队列独立建仓:
-
-* 基准 (benchmark) = 该队列全部可交易事件的等权组合
-* 组合 (portfolio) = 按信号排序取前 ``top_pct`` 分位的等权组合, long-only
-* 持有到各自入场后第 ``horizon`` 个交易日收盘
-
-因此每个队列给出一个组合收益、一个基准收益和一个主动收益。队列收益是
-**事件队列收益**, 不是单一可交易账户的净值: 相邻队列的持有期可能重叠,
-这点在报告的限制里必须写明。
-
-成本
-----
-每个队列按"整仓买入 + 到期整仓卖出"计费, 因此买入/卖出换手率都是 1.0::
-
-    佣金      = (1 + 1) * commission_rate
-    印花税    = 1 * stamp_tax_rate          # 卖出单边
-    滑点      = 2 * slippage(order_size, adv)
-    冲击成本  = 2 * market_impact(order_size, adv, volatility)
-
-其中 ``order_size = AUM * 单票权重``, 因此成本随 AUM 上升 —— 这也是容量
-分析的来源。
-"""
+每组取信号最高的 top_pct 等权持有，与全组等权基准比较。
+成本按整仓买入和卖出计算，滑点与冲击取决于 AUM、ADV 和波动率。
+相邻组持有期可能重叠，累计队列收益不代表单一账户净值。"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -114,10 +92,8 @@ class EventBacktester:
         self.min_names = int(min_names)
         self.drop_blocked = drop_blocked
         adj = f"fwd_ret_adj_{self.horizon}d"
-        raw = f"fwd_ret_{self.horizon}d"
         self.return_col = return_col or adj
 
-    # ------------------------------------------------------------------
     def _prepare(self, panel: pd.DataFrame) -> pd.DataFrame:
         if self.signal_col not in panel.columns:
             raise ValueError(f"panel 缺少信号列: {self.signal_col}")
@@ -147,7 +123,6 @@ class EventBacktester:
             )
         return df.reset_index(drop=True)
 
-    # ------------------------------------------------------------------
     def _cohort_costs(
         self,
         selected: pd.DataFrame,
@@ -230,7 +205,6 @@ class EventBacktester:
             "adv_missing": float(adv_missing),
         }
 
-    # ------------------------------------------------------------------
     def run(self, panel: pd.DataFrame) -> BacktestResult:
         df = self._prepare(panel)
         if len(df) == 0:

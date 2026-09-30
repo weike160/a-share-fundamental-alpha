@@ -8,6 +8,8 @@
 >
 > `v1.0` 使用 AKShare 公开数据完成第一条可复现链路，从财报事件面板开始，经过信号构造和统计检验，最终得到加入基础交易成本的 long-only 组合结果。复杂组合优化和精细市场冲击校准留给后续版本。
 
+每日选股、虚拟账户和收益日报入口：[`paper/README.md`](paper/README.md)。运行 `python scripts/run_paper.py daily`；离线演示使用 `python scripts/run_paper.py demo`。正式运行需要恢复训练面板并导出模型，缺失时会生成诊断日报并保持账户不变。
+
 ## 当前完成情况
 
 - 已定义 PEAD 研究问题、核心假设、评价指标和证伪条件。

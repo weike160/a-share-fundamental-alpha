@@ -1,38 +1,4 @@
-"""IC / RankIC / ICIR 计算.
-
-IC 是什么, 为什么它是核心
--------------------------
-IC (Information Coefficient) = **信号值与未来收益的横截面相关系数**。
-
-关键在于「横截面」三个字: 每个时点内部, 比较「谁比谁强」, 而不是看绝对涨跌。
-这样市场整体涨跌会自动抵消 —— 2024 年 4~7 月大盘跌了 9%, 但如果超预期的
-股票跌得比别人少, IC 依然为正。
-
-    IC = corr( SUE(i,t),  FutureReturn(i,t) )   在同一个 t 上, 跨 i 计算
-
-三种口径
---------
-============  ====================  ==============================
-名称           方法                  特点
-============  ====================  ==============================
-IC            Pearson 相关          受极端值影响大
-**RankIC**    Spearman (排名) 相关  **本项目主口径**, 抗极端值
-ICIR          Mean(IC)/Std(IC)      衡量信号**稳定性**, 不是强度
-============  ====================  ==============================
-
-为什么主口径用 RankIC: SUE 的分布有厚尾 (盈利暴增/暴亏), Pearson 会被少数
-极端值主导。排名相关只看次序, 更稳健。
-
-IC 的量级参考 (行业经验, 不是本项目标准)
-----------------------------------------
-* ``|IC| < 0.02`` —— 基本没用
-* ``0.02 ~ 0.05`` —— 弱但可能可用
-* ``> 0.05`` —— 不错
-* ICIR ``> 0.5`` —— 稳定性尚可
-
-这些只是参照系。**本项目的完成条件不包含任何一个具体阈值** —— 结论可以是
-「得到支持」「证据不足」或「被否定」。
-"""
+"""IC、RankIC 及其时序统计。主口径为 Spearman 排名相关。"""
 from __future__ import annotations
 
 import numpy as np
@@ -56,21 +22,7 @@ def ic(
     *,
     min_obs: int = MIN_OBS,
 ) -> float:
-    """单个横截面的 IC.
-
-    Parameters
-    ----------
-    signal, forward_return:
-        同一横截面内的信号与未来收益, 按标的对齐。
-    method:
-        ``"pearson"`` (IC) 或 ``"spearman"`` (RankIC)。
-    min_obs:
-        有效配对样本下限, 不足则返回 ``NaN``。
-
-    Returns
-    -------
-    float, 无法计算时返回 ``NaN`` (而不是 0 —— 0 会被误读成「无相关性」)。
-    """
+    """按索引对齐信号和未来收益，计算横截面相关。有效样本不足或序列为常数时返回 NaN。"""
     _validate_method(method)
 
     s = pd.to_numeric(pd.Series(signal), errors="coerce")
@@ -94,21 +46,7 @@ def ic_series(
     *,
     min_obs: int = MIN_OBS,
 ) -> pd.Series:
-    """逐期 IC 序列, 用于计算 ICIR.
-
-    Parameters
-    ----------
-    signals, forward_returns:
-        **宽表**: 索引是时间, 列是标的。两者索引与列会自动对齐。
-    method:
-        默认 ``"spearman"`` (即 RankIC)。
-    min_obs:
-        每期最少有效样本数。
-
-    Returns
-    -------
-    以时间为索引的 IC 序列, 样本不足的期间为 ``NaN``。
-    """
+    """宽表逐期计算 IC；只使用共有日期和标的，样本不足的期间保留 NaN。"""
     _validate_method(method)
 
     common_idx = signals.index.intersection(forward_returns.index)
@@ -127,20 +65,7 @@ def ic_series(
 
 
 def icir(ics: pd.Series, *, min_periods: int = 3) -> float:
-    """ICIR = Mean(IC) / Std(IC).
-
-    ⚠️ 注意分母是 **标准差** 而不是标准误 —— ICIR 衡量的是「信噪比」,
-    不是统计显著性。要判断显著性请用 :func:`t_stat`。
-
-    Parameters
-    ----------
-    min_periods:
-        最少有效期数, 不足返回 ``NaN``。2~3 期算出来的 ICIR 没有意义。
-
-    Returns
-    -------
-    float, 标准差为 0 或期数不足时返回 ``NaN``。
-    """
+    """IC 均值除以样本标准差；有效期数不足或标准差为零时返回 NaN。"""
     s = pd.to_numeric(pd.Series(ics), errors="coerce").dropna()
     if len(s) < min_periods:
         return float("nan")
@@ -194,12 +119,7 @@ def t_stat(
 
 
 def ic_summary(ics: pd.Series, *, nw_lags: int | None = None) -> pd.DataFrame:
-    """IC 序列的完整汇总, 供结果表与 ``factor_metrics.json`` 使用.
-
-    Returns
-    -------
-    单行 DataFrame: 期数、IC 均值、标准差、ICIR、t 值、正 IC 占比、最值。
-    """
+    """汇总 IC 的期数、均值、标准差、ICIR、t 值和正值占比；非空时附最值。"""
     s = pd.to_numeric(pd.Series(ics), errors="coerce").dropna()
     if len(s) == 0:
         return pd.DataFrame(
@@ -239,22 +159,7 @@ def ic_by_date(
     method: str = "spearman",
     min_obs: int = MIN_OBS,
 ) -> pd.Series:
-    """事件面板 (长表) 上按入场日分组计算 IC.
-
-    这是本项目 PEAD 研究的**主口径**: 每个入场日构成一个横截面, 截面内比较
-    「SUE 高的股票 vs SUE 低的股票, 之后收益谁更强」。
-
-    Parameters
-    ----------
-    panel:
-        事件面板长表。
-    signal_col, return_col, date_col:
-        信号列、未来收益列、分组日期列。
-
-    Returns
-    -------
-    以入场日为索引的 IC 序列 (仅包含样本充足的日期)。
-    """
+    """长表按入场日计算横截面 IC，跳过无法计算的日期。"""
     for col in (signal_col, return_col, date_col):
         if col not in panel.columns:
             raise ValueError(f"panel 缺少列 {col!r}")

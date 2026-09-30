@@ -23,6 +23,8 @@ htmlcov/
 # Data (local, not committed)
 data/raw/
 data/processed/
+paper_output/
+paper_models/
 *.parquet
 *.feather
 *.csv

@@ -1,19 +1,6 @@
-"""AKShare 原始数据下载与缓存层.
+"""AKShare 原始响应缓存与失败重试。
 
-研究运行时**不直接调用 akshare**: 所有网络访问都经过 :func:`fetch`。
-它把原始响应落盘为 parquet, 并在旁边记录一份元数据 (接口名、参数、
-AKShare 版本、抓取时间、行数、字段名、内容摘要)。这样做有三个目的:
-
-1. **可复现** —— 同一条运行命令重复执行时读缓存, 不重新抓取。
-2. **可追溯** —— 每个结果都能对回到具体的接口参数与 AKShare 版本。
-3. **抗抖动** —— 实测 AKShare 上游会偶发 ``RemoteDisconnected``
-   (见 ``stock_zh_a_hist`` / ``stock_zh_a_st_em``), 这里统一重试与退避。
-
-缓存布局::
-
-    data/raw/<interface>/<params_key>.parquet
-    data/raw/<interface>/<params_key>.meta.json
-"""
+缓存位于 data/raw/<interface>/，parquet 旁的元数据记录参数、版本、时间和文件摘要。"""
 from __future__ import annotations
 
 import hashlib
@@ -109,11 +96,7 @@ def _mixed_object_columns(df: pd.DataFrame) -> list[str]:
 
 
 def _write_parquet(df: pd.DataFrame, path: Path) -> None:
-    """写 parquet, 对混型列做降级处理.
-
-    混型列统一转成字符串 (``False`` → ``"False"``), 读取方需自行解析 —— 这是
-    parquet「一列一类型」的硬约束下唯一可行的保真方式, 原始信息没有丢失。
-    """
+    """写入 parquet；混型列转为字符串，读取方自行解析。"""
     mixed = _mixed_object_columns(df)
     if mixed:
         df = df.copy()

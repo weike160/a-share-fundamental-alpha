@@ -6,19 +6,7 @@ import pandas as pd
 
 
 def winsorize(series: pd.Series, lower: float = 0.01, upper: float = 0.99) -> pd.Series:
-    """分位数去极值.
-
-    Parameters
-    ----------
-    series:
-        待处理序列, ``NaN`` 原样保留。
-    lower, upper:
-        分位点 (0~1), 按**非缺失值**计算; 超出区间的值截断到分位点。
-
-    Returns
-    -------
-    与输入同索引的序列; 输入为空或全为 ``NaN`` 时返回输入的副本。
-    """
+    """按非缺失值的分位数截断极值；空序列或全缺失时返回输入副本。"""
     values = pd.to_numeric(series, errors="coerce")
     valid = values.dropna()
     if valid.empty:
@@ -33,24 +21,9 @@ def zscore_cross_section(
     value_col: str,
     date_col: str = "tradable_ts",
 ) -> pd.Series:
-    """横截面标准化 (z-score).
+    """选取同一日历日的横截面，用样本标准差计算 z-score。
 
-    Parameters
-    ----------
-    frame:
-        长表。
-    date:
-        目标横截面日期, 只按**日历日**比较 (忽略时分秒)。
-    value_col:
-        待标准化的数值列。
-    date_col:
-        日期列。
-
-    Returns
-    -------
-    与选中行同索引的序列 ``(x - mean) / std``, 标准差用样本口径 (``ddof=1``);
-    有效值少于 2 个或标准差为 0 时全为 ``NaN``。
-    """
+    有效值少于两个、标准差为零或非有限时返回全 NaN，保留选中行的索引。"""
     for col in (value_col, date_col):
         if col not in frame.columns:
             raise ValueError(f"frame 缺少列 {col!r}")
@@ -62,11 +35,15 @@ def zscore_cross_section(
 
     out = pd.Series(np.nan, index=selected.index, dtype="float64")
     valid = values.dropna()
-    if len(valid) >= 2:
-        std = valid.std(ddof=1)
-        if np.isfinite(std) and std > 0:
-            positions = np.flatnonzero(values.notna().to_numpy())
-            out.iloc[positions] = ((valid - valid.mean()) / std).to_numpy()
+    if len(valid) < 2:
+        return out
+    std = valid.std(ddof=1)
+    if not np.isfinite(std) or std <= 0:
+        return out
+
+    # 按位置赋值，兼容重复索引。
+    positions = np.flatnonzero(values.notna().to_numpy())
+    out.iloc[positions] = ((valid - valid.mean()) / std).to_numpy()
     return out
 
 

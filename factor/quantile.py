@@ -17,25 +17,9 @@ def quantile_returns(
     forward_returns: pd.Series,
     n_quantiles: int = 10,
 ) -> pd.DataFrame:
-    """按 signal 分 n 组, 返回各组的平均未来收益.
+    """按信号分位数统计未来收益，缺失配对剔除。
 
-    Parameters
-    ----------
-    signals, forward_returns:
-        同一横截面的信号与未来收益, 按索引对齐, 缺失配对剔除。
-    n_quantiles:
-        分组数, 必须 >= 2。
-
-    Returns
-    -------
-    以分位号 (1 = 信号最低) 为索引的 DataFrame, 列为
-    ``[mean_return, median_return, std_return, count]``。
-
-    Raises
-    ------
-    ValueError
-        有效样本少于 ``2 * n_quantiles`` 时 (此时分层没有统计意义)。
-    """
+    组号从 1（最低信号）开始；有效样本少于分组数的两倍时抛出 ValueError。"""
     if n_quantiles < 2:
         raise ValueError(f"n_quantiles 必须 >= 2, 收到 {n_quantiles}")
 
@@ -85,22 +69,7 @@ def quantile_returns_by_date(
     date_col: str = "actual_disclosure_date",
     n_quantiles: int = 5,
 ) -> pd.DataFrame:
-    """逐日期做横截面分层, 样本不足的日期跳过.
-
-    Parameters
-    ----------
-    df:
-        事件面板长表。
-    signal_col, return_col, date_col:
-        信号列、未来收益列、日期列。
-    n_quantiles:
-        每个横截面的分组数。
-
-    Returns
-    -------
-    长表, 列为 ``[date, quantile, mean_return, count]`` (``date`` 取自
-    ``date_col``), 按日期升序。
-    """
+    """逐日分层，跳过样本不足的日期，返回 date、quantile、mean_return、count 长表。"""
     for col in (signal_col, return_col, date_col):
         if col not in df.columns:
             raise ValueError(f"df 缺少列 {col!r}")
